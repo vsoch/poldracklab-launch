@@ -14,31 +14,31 @@ The file "myscript.sh" would be a list (single column) of bash commands (usually
 
 ### commands that can be set
 
-##### -s or --script
+###### -s or --script
 The name of the parallel script to run. (REQUIRED)
 
-#### -r or --runtime
+###### -r or --runtime
 The maximum runtime for job. (DEFAULT 01:00:00)
 
-#### -n or --jobname
+###### -n or --jobname
 The name of the job (DEFAULT launch)
 
-#### -d or --cwd
+###### -d or --cwd
 Name of working directory (DEFAULT is $PWD)
 
-#### -N or --nodes
+###### -N or --nodes
 Minimum number of nodes be allocated to this job (DEFAULT 1)
 
-#### -t or --test
+###### -t or --test
 only run as a test job (DEFAULT False)
 
-#### -q or --queue
+###### -q or --queue
 Name of queue (DEFAULT normal)
 
-#### -f or --qsubfile
+###### -f or --qsubfile
 Name of qsub file (DEFAULT will go to jobname)
 
-#### -k or --keepqsubfile
+###### -k or --keepqsubfile
 keep qsub file (DEFAULT False (not specified) will delete file after submission)
 
 The SLURM submission can take more commands, and there are more details that can be specified to run a job. Please add them and submit a PR, or talk to @vsoch if you would like to add commands.
