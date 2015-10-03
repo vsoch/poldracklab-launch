@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+
+# launch script for wrangler
+# example:
+#
+# launch -s myjoblist.sh -k
+
+import os
+import sys
+import re
+import subprocess
+import argparse
+import socket # not to be confused with "import sochat"
+
+# Functions 
+def read_template(template_file):
+    filey = open(template_file,"rb")
+    lines = filey.readlines()
+    filey.close()
+    return "".join(lines)
+
+def do_sub(string,value,template):
+    return re.sub("\[SUB_%s_SUB\]" %string,str(value),template)
+
+# Get launcher template
+try:
+    template = os.environ["LAUNCH_TEMPLATE"]
+    template = read_template(template)
+except KeyError:
+    print "Set environment variable LAUNCH_TEMPLATE to a slurm template, or module load poldracklablaunch"
+    sys.exit(0)
+    
+MAXCORES=4104
+
+# set up argument parser
+parser = argparse.ArgumentParser(description='process SLURM job.')
+parser.add_argument('-s','--script',help='name of parallel script to run',dest='script_name')
+parser.add_argument('-r','--runtime',help='maximum runtime for job',default='01:00:00',dest='runtime')
+parser.add_argument('-n','--jobname',help='job name',default='launch',dest='jobname')
+parser.add_argument('-d','--cwd',help='name of working directory',default=".",dest='directory')
+parser.add_argument('-N','--nodes', help = 'minimum number of nodes be allocated to this job', dest='nodes', default=1)
+parser.add_argument('-t','--test', help = 'only run as a test job', dest='test', default=False)
+parser.add_argument('-q','--queue',help='name of queue',default='normal',dest='queue')
+parser.add_argument('-f','--qsubfile',help='name of qsub file',dest='qsubfile',default=None)
+parser.add_argument('-k','--keepqsubfile',help='keep qsub file',dest='keepqsubfile', action="store_true",default=False)
+
+(args, command) = parser.parse_known_args(sys.argv[1:])
+
+# For each, make substitutions to template
+template = do_sub("SCRIPT",args.script_name,template)
+template = do_sub("TIME",args.runtime,template)
+template = do_sub("JOBNAME",args.jobname,template)
+template = do_sub("WORKDIR",args.directory,template)
+template = do_sub("QUEUE",args.queue,template)
+template = do_sub("NUMBERNODES",args.nodes,template)
+
+# If qsubfile not set, use jobname
+if not args.qsubfile:
+    args.qsubfile = args.jobname
+template = do_sub("QSUBFILE",args.qsubfile,template)
+
+# Get the number of tasks from the script file
+try:
+    filey=open(args.script_name,'rb')
+    commands = filey.readlines()
+    if isinstance(commands,str): commands = [commands]
+    number_tasks = len(commands)
+    filey.close()
+    template = do_sub("TASKS",number_tasks,template)
+except IOError:
+    print 'Cannot find %s!' %(args.script_name)
+    sys.exit(0)
+
+# Write the job to file
+output_file = "%s.slurm" %(args.jobname)
+output = open(output_file,"wb")
+output.writelines(template)
+output.close()
+
+# Launch the script
+if not args.test:
+    process = subprocess.Popen('sbatch %s' %(output_file), shell=True, stdout=subprocess.PIPE)
+    for line in process.stdout:
+        print line.strip()
+        if line.find('Submitted batch job')==0:
+            jobid=int(line.strip().split(' ')[3])
+    process.wait()
+
+# Delete if necessary
+if args.keepqsubfile == False:
+    print 'Deleting qsubfile: %s' %(output_file)
+    os.remove(output_file)
